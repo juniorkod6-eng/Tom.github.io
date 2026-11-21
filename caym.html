@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TechnoDom — Бытовая техника</title>
+  <style>
+    :root { --primary: #2c3e50; --accent: #e67e22; --bg: #f4f7f6; --card: #ffffff; }
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: var(--bg); color: #333; }
+    header { background: var(--primary); color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
+    nav button { display: none; background: white; color: var(--primary); border: none; padding: 8px 12px; cursor: pointer; }
+    nav ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 1.5rem; }
+    nav a { color: white; text-decoration: none; font-weight: 500; }
+    main { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
+    h1, h2 { text-align: center; }
+    .filter-bar { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.8rem; margin-bottom: 1.5rem; }
+    .filter-btn { padding: 8px 16px; border: 1px solid var(--primary); background: white; cursor: pointer; border-radius: 6px; }
+    .filter-btn.active { background: var(--primary); color: white; }
+    .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; }
+    .product-card { background: var(--card); padding: 1rem; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+    .product-price { font-size: 1.25rem; font-weight: bold; color: var(--primary); }
+    .product-old-price { text-decoration: line-through; color: #999; margin-right: 0.5rem; }
+    button.buy-btn { width: 100%; padding: 10px; background: var(--accent); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; margin-top: 0.75rem; }
+    button.buy-btn:hover { opacity: 0.9; }
+
+    /* Модальное окно выбора количества */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000; }
+    .modal { background: white; padding: 2rem; border-radius: 10px; max-width: 400px; width: 90%; text-align: center; }
+    .modal h3 { margin-top: 0; }
+    .qty-controls { display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin: 1rem 0; }
+    .qty-btn { width: 36px; height: 36px; background: #eee; border: 1px solid #ccc; cursor: pointer; border-radius: 4px; }
+    .qty-input { width: 48px; text-align: center; padding: 0; border: 1px solid #ccc; border-radius: 4px; }
+    .confirm-qty-btn { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; }
+    .close-modal { position: absolute; top: 12px; right: 16px; background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #666; }
+
+    .cart-summary { background: var(--primary); color: white; padding: 1rem; text-align: center; margin-top: 2rem; border-radius: 8px; }
+
+    @media (max-width: 768px) {
+      nav ul { display: none; }
+      nav button { display: block; }
+      .mobile-menu { position: absolute; top: 60px; left: 0; width: 100%; background: var(--primary); display: none; flex-direction: column; padding: 1rem; gap: 1rem; }
+      .mobile-menu a { color: white; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">TechnoDom</div>
+    <nav>
+      <button id="menu-toggle">☰ Меню</button>
+      <ul id="nav-menu">
+        <li><a href="#catalog">Каталог</a></li>
+        <li><a href="#about">О нас</a></li>
+        <li><a href="#contacts">Контакты</a></li>
+      </ul>
+      <div class="mobile-menu">
+        <a href="#catalog">Каталог</a>
+        <a href="#about">О нас</a>
+        <a href="#contacts">Контакты</a>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <section id="catalog">
+      <h1>Бытовая техника</h1>
+      <div class="filter-bar" id="filters">
+        <button class="filter-btn active" data-filter="all">Все</button>
+        <button class="filter-btn" data-filter="fridge">Холодильники</button>
+        <button class="filter-btn" data-filter="washing">Стиральные машины</button>
+        <button class="filter-btn" data-filter="coffee">Кофемашины</button>
+        <button class="filter-btn" data-filter="vacuum">Пылесосы</button>
+      </div>
+      <div class="products-grid" id="products"></div>
+    </section>
+
+    <section id="about" style="margin-top: 3rem;">
+      <h2>О нас</h2>
+      <p>TechnoDom — ваш надёжный поставщик бытовой техники. Гарантия, быстрая доставка и честные цены.</p>
+    </section>
+
+    <section id="contacts" style="margin-top: 3rem;">
+      <h2>Контакты</h2>
+      <p>Телефон: +7 (999) 000-00-00<br>Email: info@technodom.ru</p>
+    </section>
+
+    <div class="cart-summary">
+      В корзине: <span id="cart-count">0</span> шт. на сумму <span id="cart-total">0 ₽</span>
+    </div>
+  </main>
+
+  <!-- Модальное окно -->
+  <div class="modal-overlay" id="qtyModal">
+    <div class="modal">
+      <button class="close-modal" onclick="closeQtyModal()">&times;</button>
+      <h3 id="modal-product-name">Товар</h3>
+      <p id="modal-product-price">Цена</p>
+      <div class="qty-controls">
+        <button class="qty-btn" onclick="changeQty(-1)">−</button>
+        <input type="number" id="modal-qty" class="qty-input" value="1" min="1" max="10" readonly />
+        <button class="qty-btn" onclick="changeQty(1)">+</button>
+      </div>
+      <button class="confirm-qty-btn" onclick="confirmAddToCart()">Добавить в корзину</button>
+    </div>
+  </div>
+
+  <script>
+    // Данные товаров
+    const products = [
+      { id: 1, name: "Холодильник FrostLine F100", category: "fridge", price: 39990, oldPrice: 45000, desc: "Энергоэффективный, No Frost, 300 л" },
+      { id: 2, name: "Стиральная машина AquaWash S200", category: "washing", price: 24990, oldPrice: 28000, desc: "Загрузка 7 кг, 12 программ" },
+      { id: 3, name: "Кофемашина BaristaHome C300", category: "coffee", price: 19990, oldPrice: 22000, desc: "Автоматическая, капучинатор, 15 бар" },
+      { id: 4, name: "Пылесос TurboVac V400", category: "vacuum", price: 14990, oldPrice: 17000, desc: "Мощность 2000 Вт, HEPA-фильтр" },
+      { id: 5, name: "Микроволновка QuickWave M500", category: "microwave", price: 8990, desc: "Объём 23 л, гриль, сенсорное управление" },
+      { id: 6, name: "Мультиварка SmartCook C600", category: "cooker", price: 7990, desc: "15 программ, чаша 5 л, таймер" }
+    ];
+
+    let currentQty = 1;
+    const cart = [];
+
+    // Рендер товаров
+    function renderProducts(filter = "all") {
+      const container = document.getElementById("products");
+      container.innerHTML = "";
+      products.forEach(p => {
+        if (filter !== "all" && p.category !== filter) return;
+        const card = document.createElement("div");
+        card.className = "product-card";
+        card.innerHTML = `
+          <h3>${p.name}</h3>
+          <p>${p.desc}</p>
+          <div class="product-price">
+            ${p.oldPrice ? `<span class="product-old-price">${p.oldPrice.toLocaleString()} ₽</span>` : ""}
+            ${p.price.toLocaleString()} ₽
+          </div>
+          <button class="buy-btn" onclick="openQtyModal(${p.id})">Купить</button>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    // Фильтры
+    document.querySelectorAll(".filter-btn").forEach(btn => {
+      btn.addEventListener("click", e => {
+        document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+        e.target.classList.add("active");
+        renderProducts(e.target.dataset.filter);
+      });
+    });
+
+    // Мобильное меню
+    document.getElementById("menu-toggle").addEventListener("click", () => {
+      document.querySelector(".mobile-menu").style.display =
+        document.querySelector(".mobile-menu").style.display === "flex" ? "none" : "flex";
+    });
+
+    // Логика модального окна
+    function openQtyModal(id) {
+      const product = products.find(p => p.id === id);
+      if (!product) return;
+      document.getElementById("modal-product-name").textContent = product.name;
+      document.getElementById("modal-product-price").textContent = `${product.price.toLocaleString()} ₽`;
+      currentQty = 1;
+      document.getElementById("modal-qty").value = currentQty;
+      document.getElementById("qtyModal").style.display = "flex";
+      window.lastProductId = id;
+    }
+
+    function closeQtyModal() {
+      document.getElementById("qtyModal").style.display = "none";
+    }
+
+    function changeQty(delta) {
+      let q = parseInt(document.getElementById("modal-qty").value, 10) + delta;
+      q = Math.max(1, Math.min(10, q));
+      document.getElementById("modal-qty").value = q;
+      currentQty = q;
+    }
+
+    function confirmAddToCart() {
+      const qty = parseInt(document.getElementById("modal-qty").value, 10);
+      const id = window.lastProductId;
+      const product = products.find(p => p.id === id);
+      cart.push({ ...product, qty });
+      updateCart();
+      closeQtyModal();
+      alert(`Товар "${product.name}" добавлен в корзину (${qty} шт.)`);
+    }
+
+    function updateCart() {
+      const countEl = document.getElementById("cart-count");
+      const totalEl = document.getElementById("cart-total");
+      const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
+      const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+      countEl.textContent = totalQty;
+      totalEl.textContent = `${totalPrice.toLocaleString()} ₽`;
+    }
+
+    // Закрытие по клику вне окна
+    document.getElementById("qtyModal").addEventListener("click", e => {
+      if (e.target === document.getElementById("qtyModal")) closeQtyModal();
+    });
+
+    // Инициализация
+    renderProducts();
+  </script>
+</body>
+</html>
